@@ -1,0 +1,103 @@
+-- ======================================================
+
+-- ======================================================
+CREATE DATABASE IF NOT EXISTS cinema_db;
+USE cinema_db;
+
+
+CREATE TABLE IF NOT EXISTS movies (
+    movie_id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(150) NOT NULL UNIQUE,
+    genre VARCHAR(50),
+    duration_mins INT NOT NULL
+);
+
+
+CREATE TABLE IF NOT EXISTS customers (
+    customer_id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL
+);
+
+
+CREATE TABLE IF NOT EXISTS screenings (
+    screening_id INT AUTO_INCREMENT PRIMARY KEY,
+    movie_id INT NOT NULL,
+    screen_time DATETIME NOT NULL,
+    room_number INT NOT NULL,
+    FOREIGN KEY (movie_id) REFERENCES movies(movie_id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE IF NOT EXISTS tickets (
+    ticket_id INT AUTO_INCREMENT PRIMARY KEY,
+    screening_id INT NOT NULL,
+    customer_id INT NOT NULL,
+    seat_number VARCHAR(10) NOT NULL,
+    purchase_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (screening_id) REFERENCES screenings(screening_id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
+    UNIQUE (screening_id, seat_number) -- Нэг суудлыг давхардуулахгүй
+);
+
+-- ======================================================
+
+-- ======================================================
+INSERT INTO movies (title, genre, duration_mins) VALUES
+('Dune: Part Two', 'Sci-Fi', 166),
+('Kung Fu Panda 4', 'Animation', 94),
+('Oppenheimer', 'Biography', 180);
+
+INSERT INTO customers (first_name, last_name, email) VALUES
+('Bat', 'Erdene', 'bat@example.com'),
+('Suvd', 'Bold', 'suvd@example.com'),
+('Zolbayar', 'Gan', 'zoloo@example.com');
+
+INSERT INTO screenings (movie_id, screen_time, room_number) VALUES
+(1, '2026-03-26 18:00:00', 1),
+(2, '2026-03-26 14:00:00', 2),
+(1, '2026-03-27 20:00:00', 1);
+
+INSERT INTO tickets (screening_id, customer_id, seat_number) VALUES
+(1, 1, 'A1'),
+(1, 1, 'A2'),
+(1, 2, 'B1'),
+(2, 3, 'C1');
+
+
+SELECT c.first_name, c.last_name, m.title, s.screen_time, t.seat_number
+FROM tickets t
+JOIN customers c ON t.customer_id = c.customer_id
+JOIN screenings s ON t.screening_id = s.screening_id
+JOIN movies m ON s.movie_id = m.movie_id;
+
+SELECT m.title, COUNT(t.ticket_id) AS total_tickets_sold
+FROM movies m
+LEFT JOIN screenings s ON m.movie_id = s.movie_id
+LEFT JOIN tickets t ON s.screening_id = t.screening_id
+GROUP BY m.movie_id, m.title;
+
+SELECT m.title, COUNT(t.ticket_id) AS viewer_count
+FROM movies m
+JOIN screenings s ON m.movie_id = s.movie_id
+JOIN tickets t ON s.screening_id = t.screening_id
+GROUP BY m.movie_id, m.title
+ORDER BY viewer_count DESC
+LIMIT 1;
+
+SELECT c.first_name, c.last_name, COUNT(t.ticket_id) AS ticket_count
+FROM customers c
+JOIN tickets t ON c.customer_id = t.customer_id
+GROUP BY c.customer_id, c.first_name, c.last_name
+HAVING COUNT(t.ticket_id) >= 2;
+
+
+CREATE USER IF NOT EXISTS 'admin_user'@'localhost' IDENTIFIED BY 'AdminPass123!';
+GRANT ALL PRIVILEGES ON cinema_db.* TO 'admin_user'@'localhost';
+
+-- report_user үүсгэх ба зөвхөн унших эрх олгох
+CREATE USER IF NOT EXISTS 'report_user'@'localhost' IDENTIFIED BY 'ReportPass123!';
+GRANT SELECT ON cinema_db.* TO 'report_user'@'localhost';
+
+FLUSH PRIVILEGES;
